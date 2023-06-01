@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from "react";
-import { Card } from "react-bootstrap";
+
 import axios from "axios";
 import { Link } from 'react-router-dom';
 import "./fitsize.css";
 
 const BookShopList = () => {
+
   const [books, setBooks] = useState([]);
 
   useEffect(() => {
@@ -39,6 +40,7 @@ const BookShopList = () => {
   return (
     <div className="card bg-white shadow border mb-4" style={{ backgroundColor: "#f2f2f2" }}>
       <h1 className="my-5 text-center">Book Shop Online</h1>
+      <hr/>
       <div className="row justify-content-center">{bookList}</div>
     </div>
   );

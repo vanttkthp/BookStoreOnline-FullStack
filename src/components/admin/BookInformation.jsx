@@ -1,13 +1,9 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { Link, useParams } from "react-router-dom";
-import { useNavigate } from "react-router-dom";
-import { Redirect } from "react-router-dom";
 
 export default function BookInformation() {
   const [books, setBooks] = useState([]);
-  const navigate = useNavigate();
-  const { id } = useParams();
   const [confirmAddBook, setConfirmAddBook] = useState(false);
 
   useEffect(() => {
@@ -37,7 +33,6 @@ export default function BookInformation() {
     if (confirmAdd) {
       setConfirmAddBook(true);
     }
-    
   };
   if (confirmAddBook) {
     window.location.href = "/book-detail";
@@ -60,12 +55,16 @@ export default function BookInformation() {
               />
             </div>
             <div className="col-md-6 mb-3">
-              <button
-                className="btn btn-outline-dark btn-white btn-block"
-                onClick={handleAddBookClick}
-              >
-                ADD NEW BOOK
-              </button>
+              {localStorage.getItem("assessToken") ? (
+                <div >
+                  <button
+                    className="btn btn-outline-dark btn-white btn-block"
+                    onClick={handleAddBookClick}
+                  >
+                    ADD NEW BOOK
+                  </button>
+                </div>
+              ) : null}
             </div>
           </div>
           <table className="table border shadow">
@@ -94,18 +93,24 @@ export default function BookInformation() {
                   <td>{book.pages}</td>
                   <td>{book.soldQuantity}</td>
                   <td>
-                    <Link
-                      className="btn btn-outline-dark mx-2"
-                      to={`/book-detail/${book.id}`}
-                    >
-                      View
-                    </Link>
-                    <button
-                      className="btn btn-outline-danger mx-2 "
-                      onClick={() => handleDeleteClick(book.id)}
-                    >
-                      Delete
-                    </button>
+                    <div>
+                      {localStorage.getItem("assessToken") ? (
+                        <div>
+                          <Link
+                            className="btn btn-outline-dark mx-2"
+                            to={`/book-detail/${book.id}`}
+                          >
+                            View
+                          </Link>
+                          <button
+                            className="btn btn-outline-danger mx-2 "
+                            onClick={() => handleDeleteClick(book.id)}
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      ) : null}
+                    </div>
                   </td>
                 </tr>
               ))}

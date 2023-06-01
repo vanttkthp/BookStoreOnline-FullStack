@@ -1,18 +1,52 @@
-import React, { useState } from 'react';
+import React, { useState,useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { useParams, useNavigate } from "react-router-dom";
 
-const Signup = () => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [name, setName] = useState('');
+import axios from 'axios';
 
-  const handleSubmit = (e) => {
+function Signup(props) {
+
+  const [user, setUser] = useState({
+    id: "",
+    name: "",
+    email: "",
+    password: "",
+    role: "",
+  });
+  
+  function handle(e) {
+    const { id, value } = e.target;
+    setUser(prevState => ({ ...prevState, [id]: value }));
+ }
+
+  const submit =async (e)=>{
     e.preventDefault();
-    // Gửi dữ liệu đăng ký đến server hoặc thực hiện các xử lý khác
-    console.log('Email:', email);
-    console.log('Password:', password);
-    console.log('Name:', name);
-  };
+
+    if (!user.email || !user.password) {
+      alert("Vui lòng điền đầy đủ thông tin!");
+      return;
+    }
+
+    if (window.confirm("Bạn chắc chắn muốn tạo tài khoản không?")) {
+      axios.post(`http://localhost:8081/signup`, user)
+        .then((response) => {
+            console.log(response.data);
+            window.location.href = '/';
+            alert("Tạo tài khoản thành công!");
+        })
+        .catch((error) => {
+            console.error(error);
+            alert("Email này đã được sử dụng!");
+        });
+    }
+  }
+
+  useEffect(() => {
+    axios.get(`http://localhost:8081`)
+    .then((response) => setUser(response.data))
+    .catch((err) => console.log(err))
+  }, []);
+
 
   return (
     <div className="container">
@@ -21,18 +55,18 @@ const Signup = () => {
           <div className="card mt-5 shadow">
             <div className="card-body">
               <h5 className="card-title mb-4">Sign Up</h5>
-              <form onSubmit={handleSubmit}>
+              <form onSubmit={(e)=> submit(e)}>
                 <div className="mb-3">
-                  <label htmlFor="email" className="form-label">Email address</label>
-                  <input type="email" className="form-control" id="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+                  <label htmlFor="email" className="form-label" >Email address</label>
+                  <input type="email" className="form-control" id="email" value={user.email ||""} onChange={(e) => handle(e)} />
                 </div>
                 <div className="mb-3">
-                  <label htmlFor="password" className="form-label">Password</label>
-                  <input type="password" className="form-control" id="password" value={password} onChange={(e) => setPassword(e.target.value)} />
+                  <label htmlFor="password" className="form-label" >Password</label>
+                  <input type="password" className="form-control" id="password"  value={user.password ||""} onChange={(e) => handle(e)} />
                 </div>
                 <div className="mb-3">
-                  <label htmlFor="name" className="form-label">Name</label>
-                  <input type="text" className="form-control" id="name" value={name} onChange={(e) => setName(e.target.value)} />
+                  <label htmlFor="name" className="form-label" >Name</label>
+                  <input type="text" className="form-control" id="name" value={user.name ||""} onChange={(e) => handle(e)} />
                 </div>
                 <div className="d-grid">
                   <button className="btn btn-outline-dark" type="submit">Sign Up</button>

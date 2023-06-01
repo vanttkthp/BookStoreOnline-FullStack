@@ -1,8 +1,10 @@
 import axios from "axios";
 import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import ImagePreview from "./ImagePreview";
-import Footer from "./Footer";
+
+import { initializeApp } from "firebase/app";
+import { getAnalytics } from "firebase/analytics";
+import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
 export default function AddBook(props) {
   let navigate = useNavigate();
@@ -17,6 +19,28 @@ export default function AddBook(props) {
     bookCover: "",
   });
 
+  const firebaseConfig = {
+    apiKey: "AIzaSyBaRCHuc71qP_WtAPOT-Lyo45Y_6Eu_TOk",
+    authDomain: "bookstore-online-5335a.firebaseapp.com",
+    projectId: "bookstore-online-5335a",
+    storageBucket: "bookstore-online-5335a.appspot.com",
+    messagingSenderId: "998135104592",
+    appId: "1:998135104592:web:074395b35dfa92d862fd55",
+    measurementId: "G-J3BL1XT5GG",
+  };
+
+  const [selectedImage, setSelectedImage] = useState(null);
+
+  // Initialize Firebase
+  const app = initializeApp(firebaseConfig);
+  const analytics = getAnalytics(app);
+  const storage = getStorage(app);
+  useEffect(() => {
+    const app = initializeApp(firebaseConfig);
+    const analytics = getAnalytics(app);
+    const storage = getStorage(app);
+  }, []);
+
   const {
     title,
     author,
@@ -27,32 +51,56 @@ export default function AddBook(props) {
     bookCover,
   } = book;
   const onInputChange = (e) => {
-    setBook({ ...book, [e.target.name]: e.target.value });
+    if (e.target.name === "bookCover") {
+      const file = e.target.files[0];
+      setSelectedImage(file);
+      setPreviewUrl(URL.createObjectURL(file));
+    } else {
+      setBook({ ...book, [e.target.name]: e.target.value });
+    }
   };
 
   const onSubmit = async (e) => {
     e.preventDefault();
+
     try {
-      await axios.post("http://localhost:8081/book", book);
-      setIsDuplicate(false); // Reset trạng thái thông báo nếu gửi thành công
-      navigate("/bookinfo");
+      if (selectedImage) {
+        const storageRef = ref(storage, `book_covers/${selectedImage.name}`);
+        await uploadBytes(storageRef, selectedImage);
+        const downloadURL = await getDownloadURL(storageRef);
+        const bookData = {
+          ...book,
+          bookCover: downloadURL,
+        };
+
+        await axios.post("http://localhost:8081/book", bookData);
+        setIsDuplicate(false);
+        navigate("/bookinfo");
+      } else {
+        const bookData = {
+          ...book,
+          bookCover: "",
+        };
+
+        await axios.post("http://localhost:8081/book", bookData);
+        setIsDuplicate(false);
+        navigate("/bookinfo");
+      }
     } catch (error) {
-      setIsDuplicate(true); // Đánh dấu thông báo là dữ liệu đã tồn tại
+      setIsDuplicate(true);
       console.error(error);
     }
   };
 
   const [previewUrl, setPreviewUrl] = useState(null);
 
-  const previewImage = (event) => {
-    const file = event.target.files[0];
+  const previewImage = (file) => {
     const reader = new FileReader();
     reader.onload = () => {
       setPreviewUrl(reader.result);
     };
     reader.readAsDataURL(file);
   };
-
   return (
     <form onSubmit={(e) => onSubmit(e)} id="book-form">
       <div
@@ -145,6 +193,8 @@ export default function AddBook(props) {
                 <option value="Thriller">Thriller</option>
                 <option value="Fantasy">Fantasy</option>
                 <option value="Historical Fiction">Historical Fiction</option>
+                <option value="Self-help">Self-help</option>
+                <option value="Novel">Novel</option>
               </select>
             </div>
           </div>
@@ -154,9 +204,13 @@ export default function AddBook(props) {
               <div className="form-group">
                 <input
                   type="file"
+                  id="book-bookCover"
+                  name="bookCover"
+                  // Remove the value attribute since file inputs don't have values
                   onChange={(e) => {
+                    const file = e.target.files[0];
                     onInputChange(e);
-                    previewImage(e);
+                    previewImage(file);
                   }}
                   className="mb-3"
                 />

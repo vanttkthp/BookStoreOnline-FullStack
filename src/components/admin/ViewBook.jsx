@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import axios from "axios";
- 
+import { initializeApp } from "firebase/app";
+import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
+
 const ViewBook = () => {
   const [editable, setEditable] = useState(false);
-  const [isDuplicate, setIsDuplicate] = useState(false);
   const [book, setBook] = useState({
     title: "",
     author: "",
@@ -14,6 +15,19 @@ const ViewBook = () => {
     category: "",
     bookCover: "",
   });
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyBaRCHuc71qP_WtAPOT-Lyo45Y_6Eu_TOk",
+    authDomain: "bookstore-online-5335a.firebaseapp.com",
+    projectId: "bookstore-online-5335a",
+    storageBucket: "bookstore-online-5335a.appspot.com",
+    messagingSenderId: "998135104592",
+    appId: "1:998135104592:web:074395b35dfa92d862fd55",
+    measurementId: "G-J3BL1XT5GG",
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const storage = getStorage(app);
 
   const { id } = useParams();
   const navigate = useNavigate();
@@ -27,38 +41,64 @@ const ViewBook = () => {
     setBook(result.data);
   };
 
+  const [selectedImage, setSelectedImage] = useState(null);
+  const [previewUrl, setPreviewUrl] = useState(book.bookCover);
+  const [error, setError] = useState(null);
+
   const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setBook({ ...book, [name]: value });
+    if (e.target.name === "bookCover") {
+      const file = e.target.files[0];
+      setSelectedImage(file);
+      previewImage(file);
+    } else {
+      const { name, value } = e.target;
+      setBook({ ...book, [name]: value });
+    }
   };
 
   const handleEdit = () => {
     setEditable(true);
   };
-  const [error, setError] = useState(null);
 
   const handleSave = async (event) => {
     event.preventDefault();
     try {
-      await axios.put(`http://localhost:8081/book/${id}`, book);
+      let downloadURL = book.bookCover; // Giữ nguyên giá trị ban đầu nếu không có ảnh mới được chọn
+      if (selectedImage) {
+        const storageRef = ref(storage, `book_covers/${selectedImage.name}`);
+        await uploadBytes(storageRef, selectedImage);
+        downloadURL = await getDownloadURL(storageRef);
+      }
+  
+      const bookData = {
+        ...book,
+        bookCover: downloadURL,
+      };
+  
+      await axios.put(`http://localhost:8081/book/${id}`, bookData);
       setEditable(false);
       navigate("/bookinfo");
     } catch (error) {
-      setError("The book already exists in the database!"); // Đặt giá trị lỗi vào state
+      setError("The book already exists in the database!");
     }
   };
-  const key = editable ? "edit" : "view";
+  
+  
+
+  const previewImage = (file) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      setPreviewUrl(reader.result);
+    };
+    reader.readAsDataURL(file);
+  };
 
   return (
-    <form id="book-form" key={key}>
-      <div
-        className="container mt-5 card shadow border bg-white"
-        style={{ backgroundColor: "#f2f2f2" }}
-      >
+    <form id="book-form" key={editable ? "edit" : "view"}>
+      <div className="container mt-5 card shadow border bg-white" style={{ backgroundColor: "#f2f2f2" }}>
         <div className="row">
           <div className="col-md-6">
             <h2>Book Information</h2>
-
             {error && <p style={{ color: "red" }}>{error}</p>}
             <div className="mb-3">
               <label htmlFor="Title" className="form-label">
@@ -74,7 +114,6 @@ const ViewBook = () => {
                 onChange={handleInputChange}
               />
             </div>
-
             <div className="form-group">
               <label htmlFor="book-author">Author</label>
               <input
@@ -132,53 +171,19 @@ const ViewBook = () => {
                 className="form-control"
                 id="book-category"
                 name="category"
-                value={book.category} // Đảm bảo rằng biến state `category` đã được khai báo và gán giá trị
+                value={book.category}
                 disabled={!editable}
                 onChange={handleInputChange}
               >
                 <option disabled>Select a category</option>
-                <option
-                  value="Science Fiction"
-                  disabled={!editable}
-                  onChange={handleInputChange}
-                >
-                  Science Fiction
-                </option>
-                <option
-                  value="Horror"
-                  disabled={!editable}
-                  onChange={handleInputChange}
-                >
-                  Horror
-                </option>
-                <option
-                  value="Romance"
-                  disabled={!editable}
-                  onChange={handleInputChange}
-                >
-                  Romance
-                </option>
-                <option
-                  value="Thriller"
-                  disabled={!editable}
-                  onChange={handleInputChange}
-                >
-                  Thriller
-                </option>
-                <option
-                  value="Fantasy"
-                  disabled={!editable}
-                  onChange={handleInputChange}
-                >
-                  Fantasy
-                </option>
-                <option
-                  value="Historical Fiction"
-                  disabled={!editable}
-                  onChange={handleInputChange}
-                >
-                  Historical Fiction
-                </option>
+                <option value="Science Fiction">Science Fiction</option>
+                <option value="Horror">Horror</option>
+                <option value="Romance">Romance</option>
+                <option value="Thriller">Thriller</option>
+                <option value="Fantasy">Fantasy</option>
+                <option value="Historical Fiction">Historical Fiction</option>
+                <option value="Self-help">Self-help</option>
+                <option value="Novel">Novel</option>
               </select>
             </div>
           </div>
@@ -191,10 +196,17 @@ const ViewBook = () => {
                   type="file"
                   id="book-bookCover"
                   name="bookCover"
-                  value={book.bookCover}
                   disabled={!editable}
                   onChange={handleInputChange}
                 />
+              </div>
+              <div className="form-group">
+                {previewUrl && (
+                  <img src={previewUrl} alt="Preview" className="rounded border mt-2" />
+                )}
+                {!previewUrl && (
+                  <img src={book.bookCover} alt={book.title} className="rounded border mt-2" />
+                )}
               </div>
             </div>
           </div>
@@ -203,17 +215,11 @@ const ViewBook = () => {
       <div className="row mt-3">
         <div className="col-md-12 d-flex justify-content-end">
           {!editable ? (
-            <button
-              className="btn btn-outline-dark shadow"
-              onClick={handleEdit}
-            >
+            <button className="btn btn-outline-dark shadow" onClick={handleEdit}>
               Edit
             </button>
           ) : (
-            <button
-              className="btn btn-outline-dark shadow"
-              onClick={handleSave}
-            >
+            <button className="btn btn-outline-dark shadow" onClick={handleSave}>
               Save
             </button>
           )}
